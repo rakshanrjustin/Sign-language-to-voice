@@ -27,7 +27,7 @@ HAND_CONNECTIONS = [
 ROI_WIDTH = 400
 ROI_HEIGHT = 400
 PREDICTION_STABILITY_SIZE = 5
-HOLD_DURATION = 3.0  # 3 seconds hold duration
+HOLD_DURATION = 2.0  # 2 seconds hold duration
 
 class GestureToText:
     def __init__(self, model_path='model.pkl'):
@@ -284,7 +284,7 @@ class GestureToText:
         """Main gesture-to-text loop"""
         print("Starting ASL Gesture-to-Text")
         print("Hold a gesture for 3 seconds to confirm the letter")
-        print("Controls: g=space, s=save, c=clear, v=speak, q=quit")
+        print("Controls: g=space, b=backspace, s=save, c=clear, v=speak, q=quit")
         
         while True:
             ret, frame = self.cap.read()
@@ -333,6 +333,11 @@ class GestureToText:
                 self.current_text = ""
                 self.last_confirmed_letter = None
                 print("Text cleared")
+                self.reset_hold_timer()  # Reset timer after action
+            elif key == ord('b'):
+                if self.current_text:
+                    self.current_text = self.current_text[:-1]  # Remove last character
+                    print(f"Backspace -> Text: '{self.current_text}'")
                 self.reset_hold_timer()  # Reset timer after action
             elif key == ord('v'):
                 self.speak_text(self.current_text)
