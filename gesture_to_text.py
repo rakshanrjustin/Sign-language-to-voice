@@ -5,6 +5,7 @@ import numpy as np
 from collections import deque, Counter
 import joblib
 import time
+import pyttsx3
 
 # Initialize MediaPipe with new API (same config as existing system)
 BaseOptions = mp.tasks.BaseOptions
@@ -66,6 +67,12 @@ class GestureToText:
         self.hold_start_time = None
         self.current_stable_letter = None
         self.last_confirmed_letter = None
+        
+        # Initialize text-to-speech engine
+        self.engine = pyttsx3.init()
+        self.engine.setProperty('rate', 150)
+        self.speaking = False
+        self.speak_start_time = None
         
     def get_roi(self, frame):
         """Get the center ROI region (same as existing system)"""
@@ -208,6 +215,16 @@ class GestureToText:
             print(f"Error saving to file: {e}")
             return False
     
+    def speak_text(self, text):
+        """Convert text to speech"""
+        if text.strip() != "" and not self.speaking:
+            self.speaking = True
+            self.speak_start_time = time.time()
+            self.engine.say(text)
+            self.engine.runAndWait()
+            self.speaking = False
+            self.speak_start_time = None
+    
     def draw_ui(self, frame, stable_letter, hand_detected):
         """Draw UI elements on frame"""
         height, width = frame.shape[:2]
@@ -248,6 +265,7 @@ class GestureToText:
             "g - add space",
             "s - save text", 
             "c - clear text",
+            "v - speak text",
             "q - quit"
         ]
         
@@ -255,13 +273,18 @@ class GestureToText:
             cv2.putText(frame, instruction, (width - 250, 30 + i * 25), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
         
+        # Speaking indicator
+        if self.speaking:
+            cv2.putText(frame, "Speaking...", (width - 250, height - 50), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        
         return frame
     
     def run(self):
         """Main gesture-to-text loop"""
         print("Starting ASL Gesture-to-Text")
         print("Hold a gesture for 3 seconds to confirm the letter")
-        print("Controls: g=space, s=save, c=clear, q=quit")
+        print("Controls: g=space, s=save, c=clear, v=speak, q=quit")
         
         while True:
             ret, frame = self.cap.read()
@@ -310,6 +333,9 @@ class GestureToText:
                 self.current_text = ""
                 self.last_confirmed_letter = None
                 print("Text cleared")
+                self.reset_hold_timer()  # Reset timer after action
+            elif key == ord('v'):
+                self.speak_text(self.current_text)
                 self.reset_hold_timer()  # Reset timer after action
             
             # Draw UI
